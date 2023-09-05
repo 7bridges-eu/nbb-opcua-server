@@ -1,0 +1,48 @@
+* Description:
+
+This project is designed to help developers and engineers simulate an OPC UA
+server environment for testing, debugging, and prototyping without the need for
+real hardware or complex setups. Whether you're working on OPC UA client
+applications, exploring OPC UA integration, or simply need a playground for
+experimentation.
+
+It's a simple implementation written in Clojure, running on NodeJS, using the
+[[https://github.com/node-opcua/node-opcua/][node-opcua]] library.
+
+* Getting Started:
+- Clone this repository to your development environment.
+- Install the dependencies with ~npm install~.
+- Configure the server according to your testing needs. See the /configure/ section.
+- Start the server with ~npx nbb -m server~
+- Connect your OPC UA client applications for testing. (~opc.tcp://127.0.0.1:4840~)
+- Experiment, debug, and iterate
+- Stop the server with Ctrl-C
+
+* Configure
+The server reads the sensor configuration from ~sensor.csv~ file, and it groups
+the sensors by the ~machine~ field.
+
+The csv fields are:
+- machine :: Name of the machinery / device
+- ns :: Namespace index (not used at the moment)
+- node :: Browse name of the sensor
+- type :: Define the Variant type
+- min :: Minimum value the sensor can produce
+- max :: Maximum value the sensor can produce
+
+* Limitations
++ Actually the sensor outcome is a random value between min and max, maybe in
+  the future I'll implement the outcome as a sine wave between the two.
++ Only Variant<Double> type is supported at the moment.
+
+* Contributions:
+Contributions and feedback are welcome! Feel free to fork this repository, make
+enhancements, or report issues to help improve the fake OPC UA server for the
+community.
+
+* Disclaimer:
+This project is purely for testing and development purposes and should not be
+used in production environments. Always use certified OPC UA servers for
+critical industrial applications.
+
+Happy testing! 🚀

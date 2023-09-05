@@ -1,0 +1,4 @@
+machine,ns,node,type,min,max
+device1,1,Temperature,Double,100,200
+device1,1,Pressure,Double,5,10
+device2,1,Humidity,Double,0,100
