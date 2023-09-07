@@ -1,0 +1,4 @@
+{:machine-1 [{:ns 1 :browse-name "Temperature" :value {:type :Double :output [:random-range [100 200]]}}
+             {:ns 1 :browse-name "Pressure" :value {:type :Float :output [:random-range [5 10]]}}
+             {:ns 1 :browse-name "TestString" :value {:type :String :output [:static "This is a string"]}}]
+ :machine-2 [{:ns 1 :browse-name "TestBool" :value {:type :Boolean :output [:random-pick [true false]]}}]}

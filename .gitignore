@@ -1,3 +1,4 @@
 /.clj-kondo/
 /.lsp/
 /node_modules/
+/.nrepl-port

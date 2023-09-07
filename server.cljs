@@ -1,25 +1,43 @@
 (ns server
   (:require [cljs-bean.core :refer [->clj ->js]]
-            [promesa.core :as p]
+            [clojure.edn :as edn]
+            ["fs" :as fs]
             ["node-opcua" :as opcua]
-            ["csv-parse/sync" :as csv]
-            ["fs" :as fs]))
+            [promesa.core :as p]))
+
+(def data-types (->clj (.. opcua -DataType)))
 
 (defn read-sensors
-  "Parses a csv file, returning a list of sensors group by machine"
+  "Read the sensors' configuration."
   [path]
-  (as-> path $
-      (fs/readFileSync $)
-      (csv/parse $ #js{:columns true :cast true})
-      (->clj $)
-      (group-by :machine $)))
+  (edn/read-string (str (fs/readFileSync path))))
 
-(defn random-value
-  "Returns a random Variant<Double> value between min and max"
-  [min max]
+(defn random-range-value
+  "Returns a random Variant value between min and max"
+  [type [min max]]
   (fn []
     (let [value (rand-nth (range min max))]
-      (opcua/Variant. (->js {:dataType (.. opcua -DataType -Double) :value value})))))
+      (opcua/Variant. (->js {:dataType (type data-types) :value value})))))
+
+(defn random-pick-value
+  "Returns a random Variant value between min and max"
+  [type choices]
+  (fn []
+    (let [value (rand-nth choices)]
+      (opcua/Variant. (->js {:dataType (type data-types) :value value})))))
+
+(defn static-value
+  "Returns a static Variant value, similar to `constantly`"
+  [type value]
+  (fn []
+    (opcua/Variant. (->js {:dataType (type data-types) :value value}))))
+
+(defn value-fn
+  [type [strategy value]]
+  (case strategy
+    :random-range (random-range-value type value)
+    :random-pick  (random-pick-value type value)
+    :static       (static-value type value)))
 
 (defn populate-sensors
   "Configures the server's sensor"
@@ -31,12 +49,13 @@
       (let [m (.addObject namespace (->js {:browseName  machine
                                            :organizedBy (.. address-space -rootFolder -objects)}))]
         (doseq [sensor (get sensors machine)]
-          (.addVariable namespace (->js {:componentOf             m
-                                         :browseName              (:node sensor)
-                                         :nodeId                  (str "s=" (:node sensor))
-                                         :dataType                (:type sensor)
-                                         :value                   {:get (random-value (:min sensor) (:max sensor))}
-                                         :minimumSamplingInterval 1000})))))))
+          (let [{:keys [type output]} (:value sensor)]
+            (.addVariable namespace (->js {:componentOf             m
+                                           :browseName              (:browse-name sensor)
+                                           :nodeId                  (str "s=" (:browse-name sensor))
+                                           :dataType                (type data-types)
+                                           :value                   {:get (value-fn type output)}
+                                           :minimumSamplingInterval 1000}))))))))
 
 (def server-config
   (->js {:port              4840
@@ -50,7 +69,7 @@
 (defn -main
   []
   (let [server  (opcua/OPCUAServer. server-config)
-        sensors (read-sensors "./sensors.csv")]
+        sensors (read-sensors "./sensors.edn")]
     (try
       (p/do
         (js/console.log "#### Init server sensors...")
