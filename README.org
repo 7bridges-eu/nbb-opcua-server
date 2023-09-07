@@ -19,21 +19,30 @@ It's a simple implementation written in Clojure, running on NodeJS, using the
 - Stop the server with Ctrl-C
 
 * Configure
-The server reads the sensor configuration from the ~sensors.csv~ file, and it groups
-the sensors by the ~machine~ field.
+The server reads the sensor configuration from a ~sensors.edn~ file.
 
-The csv fields are:
-- machine :: Name of the machinery / device
-- ns :: Namespace index (not used at the moment)
-- node :: Browse name of the sensor
-- type :: Define the Variant type
-- min :: Minimum value the sensor can produce
-- max :: Maximum value the sensor can produce
+The file has the following structure:
+
+#+begin_src clojure
+  {:machine [{:ns 1 :browse-name "sensor" :value {:type :Double :output [:random-range [0 100]]}}]}
+#+end_src
+
+It's a map where every key is a machine / device and a vector of sensors.
+
+Sensor structure is:
+- ~:ns~: Namespace index (not used at the moment)
+- ~:brose-name~: Browse name of the sensor
+- ~:value~: Here we define the variant ~:type~ and the ~:output~ strategy:
+  + ~:type~ can be any standard OPCUA types (:Integer, :Double, :Float, :String :Boolean…)
+  + ~:output~ is a vector that contains the strategy and the value. Implemented strategies are:
+    - ~:random-range~: picks a random number between min and max; the value must be expressed in ~[min max]~ form
+    - ~:random-pick~: picks a random element from the value; the value must be expressed in ~[element1 element2 …]~ form
+    - ~:static~: always returns the provided value
 
 * Limitations
 + Actually the sensor outcome is a random value between min and max, maybe in
   the future I'll implement the outcome as a sine wave between the two.
-+ Only ~Variant<Double>~ type is supported at the moment.
++ +Only ~Variant<Double>~ type is supported at the moment.+ (See #1)
 
 * Contributions:
 Contributions and feedback are welcome! Feel free to fork this repository, make
