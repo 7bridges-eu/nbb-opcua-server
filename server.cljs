@@ -2,8 +2,8 @@
   (:require [cljs-bean.core :refer [->clj ->js]]
             [clojure.edn :as edn]
             ["fs" :as fs]
-            ["node-opcua" :as opcua]
-            [promesa.core :as p]))
+            [promesa.core :as p]
+            ["node-opcua" :as opcua]))
 
 (def data-types (->clj (.. opcua -DataType)))
 
@@ -14,30 +14,53 @@
 
 (defn random-range-value
   "Returns a random Variant value between min and max"
-  [type [min max]]
-  (fn []
+  [type [min max] written]
+  (if-not (nil? @written)
+    @written
     (let [value (rand-nth (range min max))]
       (opcua/Variant. (->js {:dataType (type data-types) :value value})))))
 
 (defn random-pick-value
   "Returns a random Variant value between min and max"
-  [type choices]
-  (fn []
+  [type choices written]
+  (if-not (nil? @written)
+    @written
     (let [value (rand-nth choices)]
       (opcua/Variant. (->js {:dataType (type data-types) :value value})))))
 
 (defn static-value
   "Returns a static Variant value, similar to `constantly`"
-  [type value]
-  (fn []
+  [type value written]
+  (if-not (nil? @written)
+    @written
     (opcua/Variant. (->js {:dataType (type data-types) :value value}))))
 
 (defn value-fn
-  [type [strategy value]]
-  (case strategy
-    :random-range (random-range-value type value)
-    :random-pick  (random-pick-value type value)
-    :static       (static-value type value)))
+  [type [strategy value] written]
+  (fn [callback]
+    (let [v         (case strategy
+                      :random-range (random-range-value type value written)
+                      :random-pick  (random-pick-value type value written)
+                      :static       (static-value type value written))]
+      (js/setTimeout
+       (fn []
+         (callback nil (opcua/DataValue. (->js {:value           v
+                                                :sourceTimestamp (js/Date.now)}))))
+       100))))
+
+(defn node-properties
+  [machine sensor]
+  (let [{:keys [type output]} (:value sensor)
+        written-value         (atom nil)]
+    (->js {:componentOf             machine
+           :nodeId                  (str "s=" (:browse-name sensor))
+           :browseName              (:browse-name sensor)
+           :dataType                (type data-types)
+           :value                   {:refreshFunc (value-fn type output written-value)
+                                     :set (fn [v]
+                                            (reset! written-value v)
+                                            (.. opcua -StatusCodes -Good))}
+           :minimumSamplingInterval 1000})))
 
 (defn populate-sensors
   "Configures the server's sensor"
@@ -49,13 +72,7 @@
       (let [m (.addObject namespace (->js {:browseName  machine
                                            :organizedBy (.. address-space -rootFolder -objects)}))]
         (doseq [sensor (get sensors machine)]
-          (let [{:keys [type output]} (:value sensor)]
-            (.addVariable namespace (->js {:componentOf             m
-                                           :browseName              (:browse-name sensor)
-                                           :nodeId                  (str "s=" (:browse-name sensor))
-                                           :dataType                (type data-types)
-                                           :value                   {:get (value-fn type output)}
-                                           :minimumSamplingInterval 1000}))))))))
+          (.addVariable namespace (node-properties m sensor)))))))
 
 (def server-config
   (->js {:port              4840
