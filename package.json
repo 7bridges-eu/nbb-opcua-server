@@ -9,7 +9,6 @@
   "author": "7bridges",
   "license": "ISC",
   "dependencies": {
-    "csv-parse": "^5.5.0",
     "nbb": "^1.2.178",
     "node-opcua": "^2.110.0"
   }
